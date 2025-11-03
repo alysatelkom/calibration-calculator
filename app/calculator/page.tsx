@@ -8,7 +8,9 @@ import { UncertaintyCalculator } from "@/components/calculator/uncertainty-calcu
 
 export default function CalculatorPage() {
   const [instruments, setInstruments] = useState<Instrument[]>([]);
+  const [selectedScope, setSelectedScope] = useState<string>("");
   const [selectedQuantity, setSelectedQuantity] = useState<string>("");
+  const [selectedInstrumentId, setSelectedInstrumentId] = useState<string>("");
   const [selectedRange, setSelectedRange] = useState<string>("");
   const [showCalculator, setShowCalculator] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -18,15 +20,24 @@ export default function CalculatorPage() {
     setInstruments(instrumentStorage.getAll());
   }, []);
 
-  const handleShow = (quantity: string, range: string) => {
+  const handleShow = (
+    scope: string,
+    quantity: string,
+    instrumentId: string,
+    range: string
+  ) => {
+    setSelectedScope(scope);
     setSelectedQuantity(quantity);
+    setSelectedInstrumentId(instrumentId);
     setSelectedRange(range);
     setShowCalculator(true);
   };
 
   const handleBack = () => {
     setShowCalculator(false);
+    setSelectedScope("");
     setSelectedQuantity("");
+    setSelectedInstrumentId("");
     setSelectedRange("");
   };
 
@@ -37,6 +48,10 @@ export default function CalculatorPage() {
       </div>
     );
   }
+
+  const selectedInstrument = instruments.find(
+    (i) => i.id === selectedInstrumentId
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -53,8 +68,10 @@ export default function CalculatorPage() {
         <CalculatorWorkflow instruments={instruments} onShow={handleShow} />
       ) : (
         <UncertaintyCalculator
+          scope={selectedScope}
           measurementQuantity={selectedQuantity}
           measurementRange={selectedRange}
+          instrument={selectedInstrument}
           onBack={handleBack}
         />
       )}

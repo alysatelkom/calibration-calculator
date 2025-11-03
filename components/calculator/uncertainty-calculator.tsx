@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Save, Edit, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Edit, Plus, Download } from "lucide-react";
 import {
   UncertaintyComponent,
   UncertaintyTemplate,
-  Distribution,
+  Instrument,
 } from "@/types";
 import { generateId, templateStorage } from "@/lib/storage";
 import {
@@ -15,71 +15,107 @@ import {
 } from "@/lib/calculations";
 import { CalculationTable } from "./calculation-table";
 import { TemplateManager } from "./template-manager";
+import * as XLSX from "xlsx";
 
 interface UncertaintyCalculatorProps {
+  scope: string;
   measurementQuantity: string;
   measurementRange: string;
+  instrument?: Instrument;
   onBack: () => void;
 }
 
-// Default components that are always included
-const createDefaultComponents = (): UncertaintyComponent[] => {
-  return [
-    {
-      id: generateId(),
-      name: "Sertifikat Kalibrasi Standar",
-      unit: "mV",
-      ...calculateComponent(0, "Normal"),
-      order: 1,
-    },
-    {
-      id: generateId(),
-      name: "Drift",
-      unit: "mV",
-      ...calculateComponent(0, "Rectangular"),
-      order: 2,
-    },
-    {
-      id: generateId(),
-      name: "Resolusi / Readability",
-      unit: "mV",
-      ...calculateComponent(0, "Rectangular"),
-      order: 3,
-    },
-    {
-      id: generateId(),
-      name: "Repeatability",
-      unit: "mV",
-      ...calculateComponent(0, "Type A"),
-      order: 4,
-    },
-  ];
-};
-
 export function UncertaintyCalculator({
+  scope,
   measurementQuantity,
   measurementRange,
+  instrument,
   onBack,
 }: UncertaintyCalculatorProps) {
-  const instrumentType = measurementQuantity; // As per requirements
-  const standard = measurementQuantity; // As per requirements
-  const measurementModel = "Y = X"; // Fixed text as per requirements
+  const instrumentType = instrument
+    ? `${instrument.name} (${instrument.brand} - ${instrument.type})`
+    : measurementQuantity;
+  const standard = instrument?.name || measurementQuantity;
+  const measurementModel = "Y = X";
 
-  const [components, setComponents] = useState<UncertaintyComponent[]>(
-    createDefaultComponents()
-  );
+  // Get CMC and Drift from instrument database
+  const instrumentData = useMemo(() => {
+    if (!instrument) return { cmc: 0, drift: 0, calibrationUncertainty: 0 };
+
+    const quantity = instrument.measurementQuantities.find(
+      (q) => q.name === measurementQuantity
+    );
+    if (!quantity) return { cmc: 0, drift: 0, calibrationUncertainty: 0 };
+
+    const range = quantity.ranges.find((r) => r.range === measurementRange);
+    if (!range) return { cmc: 0, drift: 0, calibrationUncertainty: 0 };
+
+    return {
+      cmc: range.cmc,
+      drift: range.drift,
+      calibrationUncertainty: range.calibrationUncertainty,
+    };
+  }, [instrument, measurementQuantity, measurementRange]);
+
+  // Create default components with values from database
+  const createDefaultComponents = (): UncertaintyComponent[] => {
+    return [
+      {
+        id: generateId(),
+        name: "Sertifikat Kalibrasi Standar",
+        unit: "mV",
+        ...calculateComponent(
+          instrumentData.calibrationUncertainty,
+          "Normal"
+        ),
+        order: 1,
+      },
+      {
+        id: generateId(),
+        name: "Drift",
+        unit: "mV",
+        ...calculateComponent(instrumentData.drift, "Rectangular"),
+        order: 2,
+      },
+      {
+        id: generateId(),
+        name: "Resolusi / Readability",
+        unit: "mV",
+        ...calculateComponent(0, "Rectangular"),
+        order: 3,
+      },
+      {
+        id: generateId(),
+        name: "Repeatability",
+        unit: "mV",
+        ...calculateComponent(0, "Type A"),
+        order: 4,
+      },
+    ];
+  };
+
+  const [components, setComponents] = useState<UncertaintyComponent[]>([]);
   const [isEditMode, setIsEditMode] = useState(true);
   const [loadedTemplate, setLoadedTemplate] = useState<
     UncertaintyTemplate | undefined
   >();
   const [showTemplateManager, setShowTemplateManager] = useState(false);
 
+  // Initialize components when instrument data changes
+  useEffect(() => {
+    setComponents(createDefaultComponents());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instrumentData.cmc, instrumentData.drift]);
+
   // Calculate results whenever components change
   const results = useMemo(() => {
     return calculateResults(components);
   }, [components]);
 
-  // Load templates for this quantity and range
+  // Auto-generated template name
+  const autoTemplateName = `${measurementQuantity} - ${measurementRange}`;
+
+  // Available templates for this quantity and range
   const availableTemplates = useMemo(() => {
     return templateStorage.getByQuantityAndRange(
       measurementQuantity,
@@ -114,17 +150,18 @@ export function UncertaintyCalculator({
   };
 
   const handleRemoveComponent = (id: string) => {
-    // Can't remove default components (first 4)
     const component = components.find((c) => c.id === id);
     if (component && component.order > 4) {
       setComponents(components.filter((c) => c.id !== id));
     }
   };
 
-  const handleSaveTemplate = (name: string) => {
+  const handleSaveTemplate = (name?: string) => {
+    const templateName = name || autoTemplateName;
+
     const template: UncertaintyTemplate = {
       id: loadedTemplate?.id || generateId(),
-      name,
+      name: templateName,
       measurementQuantity,
       instrumentType,
       standard,
@@ -167,10 +204,172 @@ export function UncertaintyCalculator({
     setIsEditMode(true);
   };
 
+  const handleExportToExcel = () => {
+    // Prepare data for Excel
+    const tableData = [];
+
+    // Header row
+    tableData.push([
+      "Komponen",
+      "Satuan",
+      "U",
+      "Distribusi",
+      "Divisor",
+      "Ui",
+      "Ci",
+      "UiCi",
+      "(UiCi)²",
+      "ni",
+      "(UiCi)⁴/ni",
+    ]);
+
+    // Component rows
+    components
+      .sort((a, b) => a.order - b.order)
+      .forEach((component) => {
+        tableData.push([
+          component.name,
+          component.unit,
+          component.uncertainty,
+          component.distribution,
+          component.divisor,
+          component.ui,
+          component.ci,
+          component.uiCi,
+          component.uiCiSquared,
+          component.ni,
+          component.uiCiFourthDivNi,
+        ]);
+      });
+
+    // SUMS row
+    tableData.push([
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "JUMLAH (SUMS):",
+      results.sumUiCiSquared,
+      "",
+      results.sumUiCiFourthDivNi,
+    ]);
+
+    // Results rows
+    tableData.push([
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Combined Standard Uncertainty (uc):",
+      results.combinedStandardUncertainty,
+      "",
+      "",
+      "",
+    ]);
+    tableData.push([
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Effective Degrees of Freedom (veff):",
+      results.effectiveDegreesOfFreedom,
+      "",
+      "",
+      "",
+    ]);
+    tableData.push([
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Coverage Factor (k):",
+      results.coverageFactor,
+      "",
+      "",
+      "",
+    ]);
+    tableData.push([
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Expanded Uncertainty (U):",
+      results.expandedUncertainty,
+      "",
+      "",
+      "",
+    ]);
+    tableData.push([
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "CMC:",
+      instrumentData.cmc,
+      "",
+      "",
+      "",
+    ]);
+    tableData.push([
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "Final Uncertainty:",
+      Math.max(results.expandedUncertainty, instrumentData.cmc),
+      "",
+      "",
+      "",
+    ]);
+
+    // Add header information
+    const headerData = [
+      ["PERHITUNGAN BUDGET KETIDAKPASTIAN"],
+      [],
+      ["Scope:", scope],
+      ["Besaran yang diukur:", measurementQuantity],
+      ["Jenis alat yang dikalibrasi:", instrumentType],
+      ["Standar yang digunakan:", standard],
+      ["Model matematis pengukuran:", measurementModel],
+      ["Rentang ukur:", measurementRange],
+      [],
+    ];
+
+    const finalData = [...headerData, ...tableData];
+
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(finalData);
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Uncertainty Budget");
+
+    // Save file
+    const fileName = `${measurementQuantity}_${measurementRange}_${new Date()
+      .toISOString()
+      .split("T")[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <button
           onClick={onBack}
           className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -179,7 +378,14 @@ export function UncertaintyCalculator({
           Kembali
         </button>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={handleExportToExcel}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Download className="w-5 h-5" />
+            Export Excel
+          </button>
           {!isEditMode && (
             <button
               onClick={() => setIsEditMode(true)}
@@ -191,9 +397,9 @@ export function UncertaintyCalculator({
           )}
           <button
             onClick={handleNewCalculation}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
           >
-              <Plus className="w-5 h-5" />
+            <Plus className="w-5 h-5" />
             Perhitungan Baru
           </button>
           <button
@@ -213,23 +419,27 @@ export function UncertaintyCalculator({
         </h2>
 
         <div className="space-y-2 text-black dark:text-white">
-          <div className="grid grid-cols-[200px_1fr]">
+          <div className="grid grid-cols-[250px_1fr]">
+            <span className="font-medium">Scope:</span>
+            <span>{scope}</span>
+          </div>
+          <div className="grid grid-cols-[250px_1fr]">
             <span className="font-medium">Besaran yang diukur:</span>
             <span>{measurementQuantity}</span>
           </div>
-          <div className="grid grid-cols-[200px_1fr]">
+          <div className="grid grid-cols-[250px_1fr]">
             <span className="font-medium">Jenis alat yang dikalibrasi:</span>
             <span>{instrumentType}</span>
           </div>
-          <div className="grid grid-cols-[200px_1fr]">
+          <div className="grid grid-cols-[250px_1fr]">
             <span className="font-medium">Standar yang digunakan:</span>
             <span>{standard}</span>
           </div>
-          <div className="grid grid-cols-[200px_1fr]">
+          <div className="grid grid-cols-[250px_1fr]">
             <span className="font-medium">Model matematis pengukuran:</span>
             <span>{measurementModel}</span>
           </div>
-          <div className="grid grid-cols-[200px_1fr]">
+          <div className="grid grid-cols-[250px_1fr]">
             <span className="font-medium">Rentang ukur:</span>
             <span>{measurementRange}</span>
           </div>
@@ -249,7 +459,9 @@ export function UncertaintyCalculator({
       <CalculationTable
         components={components}
         results={results}
+        cmc={instrumentData.cmc}
         isEditMode={isEditMode}
+        instrumentData={instrumentData}
         onUpdateComponent={handleUpdateComponent}
         onAddComponent={handleAddComponent}
         onRemoveComponent={handleRemoveComponent}
@@ -260,6 +472,7 @@ export function UncertaintyCalculator({
         <TemplateManager
           templates={availableTemplates}
           currentTemplate={loadedTemplate}
+          defaultName={autoTemplateName}
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
           onDelete={handleDeleteTemplate}

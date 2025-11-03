@@ -7,7 +7,8 @@ import { X, Save, Download, Trash2 } from "lucide-react";
 interface TemplateManagerProps {
   templates: UncertaintyTemplate[];
   currentTemplate?: UncertaintyTemplate;
-  onSave: (name: string) => void;
+  defaultName?: string;
+  onSave: (name?: string) => void;
   onLoad: (template: UncertaintyTemplate) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
@@ -16,20 +17,22 @@ interface TemplateManagerProps {
 export function TemplateManager({
   templates,
   currentTemplate,
+  defaultName,
   onSave,
   onLoad,
   onDelete,
   onClose,
 }: TemplateManagerProps) {
   const [templateName, setTemplateName] = useState(
-    currentTemplate?.name || ""
+    currentTemplate?.name || defaultName || ""
   );
   const [activeTab, setActiveTab] = useState<"save" | "load">("save");
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (templateName.trim()) {
-      onSave(templateName.trim());
+    const finalName = templateName.trim() || defaultName;
+    if (finalName) {
+      onSave(finalName);
       onClose();
     }
   };
@@ -99,12 +102,16 @@ export function TemplateManager({
                 </label>
                 <input
                   type="text"
-                  required
                   value={templateName}
                   onChange={(e) => setTemplateName(e.target.value)}
-                  placeholder="Masukkan nama template..."
+                  placeholder={defaultName || "Masukkan nama template..."}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900"
                 />
+                {defaultName && !templateName && (
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    Otomatis menggunakan: &quot;{defaultName}&quot;
+                  </p>
+                )}
               </div>
 
               {currentTemplate && (

@@ -6,7 +6,13 @@ import { Plus, Trash2 } from "lucide-react";
 interface CalculationTableProps {
   components: UncertaintyComponent[];
   results: CalculationResults;
+  cmc: number;
   isEditMode: boolean;
+  instrumentData: {
+    cmc: number;
+    drift: number;
+    calibrationUncertainty: number;
+  };
   onUpdateComponent: (id: string, updates: Partial<UncertaintyComponent>) => void;
   onAddComponent: () => void;
   onRemoveComponent: (id: string) => void;
@@ -17,7 +23,9 @@ const DISTRIBUTIONS: Distribution[] = ["Normal", "Rectangular", "Type A"];
 export function CalculationTable({
   components,
   results,
+  cmc,
   isEditMode,
+  instrumentData,
   onUpdateComponent,
   onAddComponent,
   onRemoveComponent,
@@ -25,6 +33,9 @@ export function CalculationTable({
   const formatNumber = (num: number, decimals: number = 6): string => {
     return num.toFixed(decimals);
   };
+
+  // Final uncertainty is the max of expanded uncertainty and CMC
+  const finalUncertainty = Math.max(results.expandedUncertainty, cmc);
 
   return (
     <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
@@ -75,12 +86,21 @@ export function CalculationTable({
           <tbody>
             {components
               .sort((a, b) => a.order - b.order)
-              .map((component, index) => {
+              .map((component) => {
                 const isDefaultComponent = component.order <= 4;
-                const canEdit = isEditMode || component.name === "Sertifikat Kalibrasi Standar";
+                const isCertificate =
+                  component.name === "Sertifikat Kalibrasi Standar";
+                const isDrift = component.name === "Drift";
+                const canEditU = isEditMode || (!isDrift && !isCertificate);
+
+                // Certificate and Drift values come from database and are not editable
+                const isDbValue = isCertificate || isDrift;
 
                 return (
-                  <tr key={component.id} className="hover:bg-gray-50 dark:hover:bg-gray-900">
+                  <tr
+                    key={component.id}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-900"
+                  >
                     <td className="border border-gray-300 dark:border-gray-700 px-3 py-2">
                       {isEditMode && !isDefaultComponent ? (
                         <input
@@ -114,7 +134,7 @@ export function CalculationTable({
                       )}
                     </td>
                     <td className="border border-gray-300 dark:border-gray-700 px-3 py-2">
-                      {canEdit ? (
+                      {canEditU && !isDbValue ? (
                         <input
                           type="number"
                           step="any"
@@ -127,7 +147,16 @@ export function CalculationTable({
                           className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-900 text-right"
                         />
                       ) : (
-                        <span className="block text-right">
+                        <span
+                          className={`block text-right ${
+                            isDbValue
+                              ? "bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded"
+                              : ""
+                          }`}
+                          title={
+                            isDbValue ? "Nilai dari database (read-only)" : ""
+                          }
+                        >
                           {formatNumber(component.uncertainty)}
                         </span>
                       )}
@@ -219,13 +248,110 @@ export function CalculationTable({
               <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right">
                 {formatNumber(results.sumUiCiFourthDivNi, 10)}
               </td>
-              {isEditMode && <td className="border border-gray-300 dark:border-gray-700"></td>}
+              {isEditMode && (
+                <td className="border border-gray-300 dark:border-gray-700"></td>
+              )}
+            </tr>
+
+            {/* Results Rows - Inline under SUMS */}
+            <tr className="bg-green-50 dark:bg-green-900/20">
+              <td
+                colSpan={7}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right font-semibold"
+              >
+                Combined Standard Uncertainty (uc):
+              </td>
+              <td
+                colSpan={isEditMode ? 5 : 4}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 font-bold text-blue-600 dark:text-blue-400"
+              >
+                {formatNumber(results.combinedStandardUncertainty)}
+              </td>
+            </tr>
+
+            <tr className="bg-green-50 dark:bg-green-900/20">
+              <td
+                colSpan={7}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right font-semibold"
+              >
+                Effective Degrees of Freedom (veff):
+              </td>
+              <td
+                colSpan={isEditMode ? 5 : 4}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 font-bold text-green-600 dark:text-green-400"
+              >
+                {formatNumber(results.effectiveDegreesOfFreedom, 2)}
+              </td>
+            </tr>
+
+            <tr className="bg-green-50 dark:bg-green-900/20">
+              <td
+                colSpan={7}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right font-semibold"
+              >
+                Coverage Factor (k):
+              </td>
+              <td
+                colSpan={isEditMode ? 5 : 4}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 font-bold text-purple-600 dark:text-purple-400"
+              >
+                {results.coverageFactor}
+              </td>
+            </tr>
+
+            <tr className="bg-green-50 dark:bg-green-900/20">
+              <td
+                colSpan={7}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right font-semibold"
+              >
+                Expanded Uncertainty (U):
+              </td>
+              <td
+                colSpan={isEditMode ? 5 : 4}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 font-bold text-red-600 dark:text-red-400"
+              >
+                {formatNumber(results.expandedUncertainty)}
+              </td>
+            </tr>
+
+            <tr className="bg-yellow-50 dark:bg-yellow-900/20">
+              <td
+                colSpan={7}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right font-semibold"
+              >
+                CMC (dari database):
+              </td>
+              <td
+                colSpan={isEditMode ? 5 : 4}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 font-bold text-orange-600 dark:text-orange-400"
+              >
+                {formatNumber(cmc)}
+              </td>
+            </tr>
+
+            <tr className="bg-indigo-100 dark:bg-indigo-900/30">
+              <td
+                colSpan={7}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right font-bold text-lg"
+              >
+                Ketidakpastian Akhir:
+              </td>
+              <td
+                colSpan={isEditMode ? 5 : 4}
+                className="border border-gray-300 dark:border-gray-700 px-3 py-2 font-bold text-lg text-indigo-700 dark:text-indigo-300"
+                title="max(Expanded Uncertainty, CMC)"
+              >
+                {formatNumber(finalUncertainty)}
+                <span className="text-xs ml-2 text-gray-600 dark:text-gray-400">
+                  (max U atau CMC)
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Add Component Button */}
+      {/* Add Component Button - Only in Edit Mode */}
       {isEditMode && (
         <div className="p-4 border-t border-gray-200 dark:border-gray-800">
           <button
@@ -237,45 +363,6 @@ export function CalculationTable({
           </button>
         </div>
       )}
-
-      {/* Results Section */}
-      <div className="p-6 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 border-t border-gray-200 dark:border-gray-800">
-        <h3 className="text-lg font-bold mb-4">Hasil Perhitungan:</h3>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-4">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-              Combined Standard Uncertainty (uc)
-            </div>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {formatNumber(results.combinedStandardUncertainty)}
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-4">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-              Effective Degrees of Freedom (veff)
-            </div>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {formatNumber(results.effectiveDegreesOfFreedom, 2)}
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-4">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-              Coverage Factor (k)
-            </div>
-            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-              {results.coverageFactor}
-            </div>
-          </div>
-          <div className="bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-700 rounded-lg p-4">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-              Expanded Uncertainty (U)
-            </div>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {formatNumber(results.expandedUncertainty)}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
