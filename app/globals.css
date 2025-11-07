@@ -2,12 +2,16 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000;
+  --border: #e5e7eb;
+  --muted: #6b7280;
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #000000;
+  --foreground: #ffffff;
+  --border: #374151;
+  --muted: #9ca3af;
 }
 
 @theme inline {
@@ -28,4 +32,23 @@ body {
 
 input, textarea, select {
   font-family: inherit;
+}
+
+/* Minimalistic button styles */
+button {
+  transition: all 0.15s ease;
+}
+
+/* Minimalistic table styles */
+table {
+  border-collapse: collapse;
+}
+
+th, td {
+  border: 1px solid var(--border);
+}
+
+.dark th,
+.dark td {
+  border-color: var(--border);
 }

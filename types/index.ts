@@ -4,7 +4,8 @@ export type Distribution = "Normal" | "Rectangular" | "Type A";
 // Measurement quantity for an instrument
 export interface MeasurementQuantity {
   id: string;
-  name: string; // e.g., "DC Voltmeter", "AC Voltmeter", etc.
+  besaranYangDiukur: string; // e.g., "DC Voltage", "AC Voltage"
+  jenisAlat: string; // e.g., "DC Voltmeter", "AC Voltmeter"
   ranges: MeasurementRange[];
 }
 
@@ -81,4 +82,23 @@ export interface CalculatorState {
   components: UncertaintyComponent[];
   results?: CalculationResults;
   isEditMode: boolean;
+}
+
+// Calculation History
+export interface CalculationHistory {
+  id: string;
+  scope: string;
+  besaranYangDiukur: string;
+  jenisAlat: string;
+  measurementRange: string;
+  instrumentName: string;
+  instrumentBrand: string;
+  instrumentType: string;
+  instrumentSerial: string;
+  components: UncertaintyComponent[];
+  results: CalculationResults;
+  cmc: number;
+  finalUncertainty: number;
+  createdAt: string;
+  createdBy?: string;
 }

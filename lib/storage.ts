@@ -1,7 +1,8 @@
-import { Instrument, UncertaintyTemplate } from "@/types";
+import { Instrument, UncertaintyTemplate, CalculationHistory } from "@/types";
 
 const INSTRUMENTS_KEY = "calibration_instruments";
 const TEMPLATES_KEY = "uncertainty_templates";
+const HISTORY_KEY = "calculation_history";
 
 /**
  * Storage utilities for instruments
@@ -95,6 +96,39 @@ export const templateStorage = {
       (t) =>
         t.measurementQuantity === quantity && t.measurementRange === range
     );
+  },
+};
+
+/**
+ * Storage utilities for calculation history
+ */
+export const historyStorage = {
+  getAll(): CalculationHistory[] {
+    if (typeof window === "undefined") return [];
+    const data = localStorage.getItem(HISTORY_KEY);
+    return data ? JSON.parse(data) : [];
+  },
+
+  save(history: CalculationHistory[]): void {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  },
+
+  add(entry: CalculationHistory): void {
+    const history = this.getAll();
+    history.unshift(entry); // Add to beginning for newest first
+    this.save(history);
+  },
+
+  delete(id: string): void {
+    const history = this.getAll();
+    const filtered = history.filter((h) => h.id !== id);
+    this.save(filtered);
+  },
+
+  getById(id: string): CalculationHistory | undefined {
+    const history = this.getAll();
+    return history.find((h) => h.id === id);
   },
 };
 
