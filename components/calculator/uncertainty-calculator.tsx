@@ -7,7 +7,7 @@ import {
   UncertaintyTemplate,
   Instrument,
 } from "@/types";
-import { generateId, templateStorage } from "@/lib/storage";
+import { generateId, templateStorage, historyStorage } from "@/lib/storage";
 import {
   calculateComponent,
   calculateResults,
@@ -40,20 +40,21 @@ export function UncertaintyCalculator({
 
   // Get CMC and Drift from instrument database
   const instrumentData = useMemo(() => {
-    if (!instrument) return { cmc: 0, drift: 0, calibrationUncertainty: 0 };
+    if (!instrument) return { cmc: 0, drift: 0, calibrationUncertainty: 0, besaranYangDiukur: "" };
 
     const quantity = instrument.measurementQuantities.find(
-      (q) => q.name === measurementQuantity
+      (q) => q.jenisAlat === measurementQuantity
     );
-    if (!quantity) return { cmc: 0, drift: 0, calibrationUncertainty: 0 };
+    if (!quantity) return { cmc: 0, drift: 0, calibrationUncertainty: 0, besaranYangDiukur: "" };
 
     const range = quantity.ranges.find((r) => r.range === measurementRange);
-    if (!range) return { cmc: 0, drift: 0, calibrationUncertainty: 0 };
+    if (!range) return { cmc: 0, drift: 0, calibrationUncertainty: 0, besaranYangDiukur: quantity.besaranYangDiukur };
 
     return {
       cmc: range.cmc,
       drift: range.drift,
       calibrationUncertainty: range.calibrationUncertainty,
+      besaranYangDiukur: quantity.besaranYangDiukur,
     };
   }, [instrument, measurementQuantity, measurementRange]);
 
@@ -95,7 +96,7 @@ export function UncertaintyCalculator({
   };
 
   const [components, setComponents] = useState<UncertaintyComponent[]>([]);
-  const [isEditMode, setIsEditMode] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [loadedTemplate, setLoadedTemplate] = useState<
     UncertaintyTemplate | undefined
   >();
@@ -204,6 +205,31 @@ export function UncertaintyCalculator({
     setIsEditMode(true);
   };
 
+  const handleSaveToHistory = () => {
+    if (!instrument) return;
+
+    const finalUncertainty = Math.max(results.expandedUncertainty, instrumentData.cmc);
+
+    const historyEntry = {
+      id: generateId(),
+      scope,
+      besaranYangDiukur: instrumentData.besaranYangDiukur,
+      jenisAlat: measurementQuantity,
+      measurementRange,
+      instrumentName: instrument.name,
+      instrumentBrand: instrument.brand,
+      instrumentType: instrument.type,
+      instrumentSerial: instrument.serialNumber,
+      components: components.map((c) => ({ ...c })),
+      results,
+      cmc: instrumentData.cmc,
+      finalUncertainty,
+      createdAt: new Date().toISOString(),
+    };
+
+    historyStorage.add(historyEntry);
+  };
+
   const handleExportToExcel = () => {
     // Prepare data for Excel
     const tableData = [];
@@ -212,14 +238,14 @@ export function UncertaintyCalculator({
     tableData.push([
       "Komponen",
       "Satuan",
-      "U",
       "Distribusi",
-      "Divisor",
+      "U",
+      "Pembagi",
+      "ni",
       "Ui",
       "Ci",
       "UiCi",
       "(UiCi)²",
-      "ni",
       "(UiCi)⁴/ni",
     ]);
 
@@ -230,14 +256,14 @@ export function UncertaintyCalculator({
         tableData.push([
           component.name,
           component.unit,
-          component.uncertainty,
           component.distribution,
+          component.uncertainty,
           component.divisor,
+          component.ni,
           component.ui,
           component.ci,
           component.uiCi,
           component.uiCiSquared,
-          component.ni,
           component.uiCiFourthDivNi,
         ]);
       });
@@ -380,8 +406,15 @@ export function UncertaintyCalculator({
 
         <div className="flex gap-2 flex-wrap">
           <button
+            onClick={handleSaveToHistory}
+            className="flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors"
+          >
+            <Save className="w-5 h-5" />
+            Simpan Perhitungan
+          </button>
+          <button
             onClick={handleExportToExcel}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <Download className="w-5 h-5" />
             Export Excel
@@ -389,7 +422,7 @@ export function UncertaintyCalculator({
           {!isEditMode && (
             <button
               onClick={() => setIsEditMode(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <Edit className="w-5 h-5" />
               Mode Edit
@@ -397,14 +430,14 @@ export function UncertaintyCalculator({
           )}
           <button
             onClick={handleNewCalculation}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <Plus className="w-5 h-5" />
             Perhitungan Baru
           </button>
           <button
             onClick={() => setShowTemplateManager(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <Save className="w-5 h-5" />
             Kelola Template

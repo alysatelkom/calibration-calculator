@@ -34,7 +34,7 @@ export function CalculatorWorkflow({
   const availableInstruments = useMemo(() => {
     if (!selectedQuantity) return [];
     return instruments.filter((instrument) =>
-      instrument.measurementQuantities.some((q) => q.name === selectedQuantity)
+      instrument.measurementQuantities.some((q) => q.jenisAlat === selectedQuantity)
     );
   }, [instruments, selectedQuantity]);
 

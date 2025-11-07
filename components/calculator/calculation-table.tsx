@@ -50,13 +50,16 @@ export function CalculationTable({
                 Satuan
               </th>
               <th className="border border-gray-300 dark:border-gray-700 px-3 py-2">
-                U
-              </th>
-              <th className="border border-gray-300 dark:border-gray-700 px-3 py-2">
                 Distribusi
               </th>
               <th className="border border-gray-300 dark:border-gray-700 px-3 py-2">
-                Divisor
+                U
+              </th>
+              <th className="border border-gray-300 dark:border-gray-700 px-3 py-2">
+                Pembagi
+              </th>
+              <th className="border border-gray-300 dark:border-gray-700 px-3 py-2">
+                ni
               </th>
               <th className="border border-gray-300 dark:border-gray-700 px-3 py-2">
                 Ui
@@ -69,9 +72,6 @@ export function CalculationTable({
               </th>
               <th className="border border-gray-300 dark:border-gray-700 px-3 py-2">
                 (UiCi)²
-              </th>
-              <th className="border border-gray-300 dark:border-gray-700 px-3 py-2">
-                ni
               </th>
               <th className="border border-gray-300 dark:border-gray-700 px-3 py-2">
                 (UiCi)⁴/ni
@@ -134,6 +134,27 @@ export function CalculationTable({
                       )}
                     </td>
                     <td className="border border-gray-300 dark:border-gray-700 px-3 py-2">
+                      {isEditMode ? (
+                        <select
+                          value={component.distribution}
+                          onChange={(e) =>
+                            onUpdateComponent(component.id, {
+                              distribution: e.target.value as Distribution,
+                            })
+                          }
+                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-900"
+                        >
+                          {DISTRIBUTIONS.map((dist) => (
+                            <option key={dist} value={dist}>
+                              {dist}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        component.distribution
+                      )}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-700 px-3 py-2">
                       {canEditU && !isDbValue ? (
                         <input
                           type="number"
@@ -161,41 +182,8 @@ export function CalculationTable({
                         </span>
                       )}
                     </td>
-                    <td className="border border-gray-300 dark:border-gray-700 px-3 py-2">
-                      {isEditMode ? (
-                        <select
-                          value={component.distribution}
-                          onChange={(e) =>
-                            onUpdateComponent(component.id, {
-                              distribution: e.target.value as Distribution,
-                            })
-                          }
-                          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-900"
-                        >
-                          {DISTRIBUTIONS.map((dist) => (
-                            <option key={dist} value={dist}>
-                              {dist}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        component.distribution
-                      )}
-                    </td>
                     <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right bg-gray-50 dark:bg-gray-900">
                       {formatNumber(component.divisor, 3)}
-                    </td>
-                    <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right bg-gray-50 dark:bg-gray-900">
-                      {formatNumber(component.ui)}
-                    </td>
-                    <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right bg-gray-50 dark:bg-gray-900">
-                      {component.ci}
-                    </td>
-                    <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right bg-gray-50 dark:bg-gray-900">
-                      {formatNumber(component.uiCi)}
-                    </td>
-                    <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right bg-gray-50 dark:bg-gray-900">
-                      {formatNumber(component.uiCiSquared)}
                     </td>
                     <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-center">
                       {isEditMode ? (
@@ -212,6 +200,18 @@ export function CalculationTable({
                       ) : (
                         component.ni
                       )}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right bg-gray-50 dark:bg-gray-900">
+                      {formatNumber(component.ui)}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right bg-gray-50 dark:bg-gray-900">
+                      {component.ci}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right bg-gray-50 dark:bg-gray-900">
+                      {formatNumber(component.uiCi)}
+                    </td>
+                    <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right bg-gray-50 dark:bg-gray-900">
+                      {formatNumber(component.uiCiSquared)}
                     </td>
                     <td className="border border-gray-300 dark:border-gray-700 px-3 py-2 text-right bg-gray-50 dark:bg-gray-900">
                       {formatNumber(component.uiCiFourthDivNi, 10)}

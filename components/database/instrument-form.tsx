@@ -44,7 +44,8 @@ export function InstrumentForm({
         ...formData.measurementQuantities,
         {
           id: generateId(),
-          name: "",
+          besaranYangDiukur: "",
+          jenisAlat: "",
           ranges: [],
         },
       ],
@@ -216,21 +217,42 @@ export function InstrumentForm({
                 className="border border-gray-300 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900"
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1 mr-4">
-                    <label className="block text-sm font-medium mb-2">
-                      Nama Besaran Ukur
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={quantity.name}
-                      onChange={(e) =>
-                        updateQuantity(quantity.id, { name: e.target.value })
-                      }
+                  <div className="flex-1 mr-4 space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Besaran yang Diukur
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={quantity.besaranYangDiukur}
+                        onChange={(e) =>
+                          updateQuantity(quantity.id, {
+                            besaranYangDiukur: e.target.value,
+                          })
+                        }
+                        placeholder="e.g., DC Voltage"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Jenis Alat yang Dikalibrasi
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={quantity.jenisAlat}
+                        onChange={(e) =>
+                          updateQuantity(quantity.id, {
+                            jenisAlat: e.target.value,
+                          })
+                        }
                       placeholder="e.g., DC Voltmeter"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900"
                     />
                   </div>
+                </div>
                   <button
                     type="button"
                     onClick={() => removeQuantity(quantity.id)}

@@ -16,7 +16,8 @@ export function getSampleInstrument(): Instrument {
     measurementQuantities: [
       {
         id: generateId(),
-        name: "DC Voltmeter",
+        besaranYangDiukur: "DC Voltage",
+        jenisAlat: "DC Voltmeter",
         ranges: [
           {
             id: generateId(),
@@ -43,7 +44,8 @@ export function getSampleInstrument(): Instrument {
       },
       {
         id: generateId(),
-        name: "AC Voltmeter",
+        besaranYangDiukur: "AC Voltage",
+        jenisAlat: "AC Voltmeter",
         ranges: [
           {
             id: generateId(),
@@ -63,7 +65,8 @@ export function getSampleInstrument(): Instrument {
       },
       {
         id: generateId(),
-        name: "DC Ammeter",
+        besaranYangDiukur: "DC Current",
+        jenisAlat: "DC Ammeter",
         ranges: [
           {
             id: generateId(),
@@ -83,7 +86,8 @@ export function getSampleInstrument(): Instrument {
       },
       {
         id: generateId(),
-        name: "AC Ammeter",
+        besaranYangDiukur: "AC Current",
+        jenisAlat: "AC Ammeter",
         ranges: [
           {
             id: generateId(),
@@ -103,7 +107,8 @@ export function getSampleInstrument(): Instrument {
       },
       {
         id: generateId(),
-        name: "Continuity Tester",
+        besaranYangDiukur: "Resistance",
+        jenisAlat: "Continuity Tester",
         ranges: [
           {
             id: generateId(),

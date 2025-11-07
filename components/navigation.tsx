@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./theme-toggle";
-import { Database, Calculator } from "lucide-react";
+import { Database, Calculator, History } from "lucide-react";
 
 export function Navigation() {
   const pathname = usePathname();
@@ -12,6 +12,7 @@ export function Navigation() {
     { href: "/", label: "Beranda", icon: null },
     { href: "/database", label: "Database Instrumen", icon: Database },
     { href: "/calculator", label: "Kalkulator Budget Ketidakpastian", icon: Calculator },
+    { href: "/history", label: "Riwayat Perhitungan", icon: History },
   ];
 
   return (

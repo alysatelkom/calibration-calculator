@@ -90,14 +90,27 @@ export function InstrumentList({
                   {instrument.measurementQuantities.map((quantity) => (
                     <div
                       key={quantity.id}
-                      className="border-l-4 border-blue-500 pl-4"
+                      className="border-l-2 border-black dark:border-white pl-4"
                     >
-                      <h4 className="font-semibold mb-2">{quantity.name}</h4>
+                      <div className="mb-2">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          Besaran yang diukur:
+                        </div>
+                        <h4 className="font-semibold">
+                          {quantity.besaranYangDiukur}
+                        </h4>
+                      </div>
+                      <div className="mb-3">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          Jenis alat yang dikalibrasi:
+                        </div>
+                        <h4 className="font-semibold">{quantity.jenisAlat}</h4>
+                      </div>
                       <div className="space-y-2">
                         {quantity.ranges.map((range) => (
                           <div
                             key={range.id}
-                            className="text-sm bg-gray-50 dark:bg-gray-900 p-3 rounded"
+                            className="text-sm border border-gray-300 dark:border-gray-700 p-3 rounded"
                           >
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                               <div>
